@@ -32,9 +32,19 @@ class SampleGraph:
     relationships: list[dict[str, Any]]
 
 
+@dataclass(frozen=True)
+class LoadPolicy:
+    min_confidence: float = 0.0
+    heuristic_min_confidence: float = 0.55
+    approved_confidence: float = 0.7
+    include_reviewable: bool = True
+
+
 def load_sample_graph(
     sample_path: Path = Path("data/extracted/phase3_sample_extraction.jsonl"),
+    policy: LoadPolicy | None = None,
 ) -> SampleGraph:
+    policy = policy or LoadPolicy()
     companies: dict[str, dict[str, Any]] = {}
     filings: dict[str, dict[str, Any]] = {}
     entities: dict[tuple[str, str], dict[str, Any]] = {}
@@ -104,6 +114,9 @@ def load_sample_graph(
                 )
 
             for relationship in record["relationships"]:
+                quality = relationship_quality(relationship, policy)
+                if quality["load_decision"] == "exclude":
+                    continue
                 rel_type = PREDICATE_TO_RELATIONSHIP[relationship["predicate"]]
                 target_label = OBJECT_TYPE_TO_LABEL[relationship["object_type"]]
                 target_key = (
@@ -137,6 +150,8 @@ def load_sample_graph(
                         "source_text": relationship["source_text"],
                         "rationale": relationship["rationale"],
                         "extraction_method": relationship["extraction_method"],
+                        "review_status": quality["review_status"],
+                        "load_decision": quality["load_decision"],
                     }
                 )
 
@@ -146,6 +161,26 @@ def load_sample_graph(
         entities=list(entities.values()),
         relationships=relationships,
     )
+
+
+def relationship_quality(relationship: dict[str, Any], policy: LoadPolicy | None = None) -> dict[str, str]:
+    policy = policy or LoadPolicy()
+    confidence = float(relationship["confidence"])
+    method = relationship["extraction_method"]
+    is_heuristic = method.startswith("heuristic:")
+    is_claude = method.startswith("claude:")
+
+    if confidence < policy.min_confidence:
+        return {"review_status": "rejected_low_confidence", "load_decision": "exclude"}
+    if is_heuristic and confidence < policy.heuristic_min_confidence:
+        return {"review_status": "rejected_heuristic_low_confidence", "load_decision": "exclude"}
+
+    review_status = "approved" if is_claude and confidence >= policy.approved_confidence else "review"
+    if not is_claude and not is_heuristic:
+        review_status = "approved"
+    if review_status == "review" and not policy.include_reviewable:
+        return {"review_status": review_status, "load_decision": "exclude"}
+    return {"review_status": review_status, "load_decision": "load"}
 
 
 def _best_company_name(record: dict[str, Any], ticker: str) -> str:

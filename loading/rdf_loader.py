@@ -8,7 +8,7 @@ from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from rdflib.namespace import XSD
 from rich.console import Console
 
-from loading.sample_reader import load_sample_graph
+from loading.sample_reader import LoadPolicy, load_sample_graph
 
 
 FKG = Namespace("https://github.com/Ning-H/sec-edgar-knowledge-graph/ontology#")
@@ -18,8 +18,8 @@ app = typer.Typer(help="Mirror extracted sample graph into an RDF Turtle store."
 console = Console()
 
 
-def build_rdf_graph(sample_path: Path) -> Graph:
-    sample = load_sample_graph(sample_path)
+def build_rdf_graph(sample_path: Path, policy: LoadPolicy | None = None) -> Graph:
+    sample = load_sample_graph(sample_path, policy=policy)
     graph = Graph()
     graph.bind("fkg", FKG)
     graph.bind("res", RES)
@@ -57,6 +57,7 @@ def build_rdf_graph(sample_path: Path) -> Graph:
         graph.add((statement, FKG.sourceText, Literal(relationship["source_text"])))
         graph.add((statement, FKG.confidence, Literal(relationship["confidence"], datatype=XSD.decimal)))
         graph.add((statement, FKG.extractionMethod, Literal(relationship["extraction_method"])))
+        graph.add((statement, FKG.reviewStatus, Literal(relationship.get("review_status", "approved"))))
 
     return graph
 
@@ -65,8 +66,16 @@ def build_rdf_graph(sample_path: Path) -> Graph:
 def main(
     sample_path: Path = typer.Option(Path("data/extracted/phase3_sample_extraction.jsonl")),
     output: Path = typer.Option(Path("data/rdf/sample_graph.ttl")),
+    strict: bool = typer.Option(False, help="Exclude reviewable heuristic/low-confidence edges."),
+    heuristic_min_confidence: float = typer.Option(0.55, help="Minimum confidence for heuristic edges."),
 ) -> None:
-    graph = build_rdf_graph(sample_path)
+    graph = build_rdf_graph(
+        sample_path,
+        policy=LoadPolicy(
+            heuristic_min_confidence=heuristic_min_confidence,
+            include_reviewable=not strict,
+        ),
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     graph.serialize(destination=output, format="turtle")
     console.print(f"Wrote {len(graph)} RDF triples to {output}")

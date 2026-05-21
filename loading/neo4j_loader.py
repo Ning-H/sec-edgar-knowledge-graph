@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from neo4j import GraphDatabase
 from rich.console import Console
 
-from loading.sample_reader import SampleGraph, load_sample_graph
+from loading.sample_reader import LoadPolicy, SampleGraph, load_sample_graph
 
 
 app = typer.Typer(help="Load extracted sample graph into Neo4j.")
@@ -124,7 +124,9 @@ class Neo4jGraphLoader:
                             r.confidence = row.confidence,
                             r.source_text = row.source_text,
                             r.rationale = row.rationale,
-                            r.extraction_method = row.extraction_method
+                            r.extraction_method = row.extraction_method,
+                            r.review_status = coalesce(row.review_status, "approved"),
+                            r.load_decision = coalesce(row.load_decision, "load")
                         """,
                         rows=scoped,
                     ).consume()
@@ -134,8 +136,16 @@ class Neo4jGraphLoader:
 def main(
     sample_path: Path = typer.Option(Path("data/extracted/phase3_sample_extraction.jsonl")),
     reset: bool = typer.Option(False, help="Delete existing Neo4j data before loading."),
+    strict: bool = typer.Option(False, help="Exclude reviewable heuristic/low-confidence edges."),
+    heuristic_min_confidence: float = typer.Option(0.55, help="Minimum confidence for heuristic edges."),
 ) -> None:
-    graph = load_sample_graph(sample_path)
+    graph = load_sample_graph(
+        sample_path,
+        policy=LoadPolicy(
+            heuristic_min_confidence=heuristic_min_confidence,
+            include_reviewable=not strict,
+        ),
+    )
     loader = Neo4jGraphLoader()
     try:
         if reset:

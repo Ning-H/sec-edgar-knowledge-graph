@@ -14,6 +14,7 @@ data/processed/*
 !data/processed/.gitkeep
 data/extracted/*
 !data/extracted/.gitkeep
+!data/extracted/*.example.csv
 data/rdf/*
 !data/rdf/.gitkeep
 
