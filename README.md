@@ -2,6 +2,18 @@
 
 Financial knowledge graph over US public-company SEC filings. The project is being built in gated phases for a Point72-style knowledge graph portfolio: ingestion first, then ontology, extraction, dual graph storage, algorithms, API, and Streamlit demo.
 
+## Current Checkpoint
+
+The repo currently has a reproducible 25-company pilot graph:
+
+- SEC filing ingestion and local manifest generation
+- Financial ontology in Turtle/RDF with Neo4j loader mappings
+- Filing-to-entity extraction with review-status quality gates
+- Neo4j property graph and RDF/Turtle export validation
+- Pilot graph algorithms with Neo4j Graph Data Science: PageRank, Louvain communities, and interpretable company similarity
+
+The latest generated pilot artifacts are intentionally local-only under `data/`; code and report templates are tracked so the run can be reproduced.
+
 ## Architecture
 
 ```mermaid
@@ -135,6 +147,28 @@ Smoke test with a smaller sample:
 ```bash
 uv run python -m ingestion.filing_downloader --limit 5
 ```
+
+Run the 25-company pilot extraction and graph load:
+
+```bash
+uv run python -m extraction.pipeline --tickers AAPL MSFT NVDA AMZN GOOGL META JPM BAC GS WMT COST HD XOM CVX NEE BA GE CAT UNH PFE JNJ PLD AMT APD CMCSA --output data/extracted/phase4_pilot25_extraction.jsonl --stats-output data/extracted/phase4_pilot25_stats.json --review-output data/extracted/phase4_pilot25_relationship_review.csv
+uv run python -m loading.neo4j_loader --input data/extracted/phase4_pilot25_extraction.jsonl --clear
+uv run python -m loading.rdf_exporter --input data/extracted/phase4_pilot25_extraction.jsonl --output data/rdf/phase4_pilot25_graph.ttl
+uv run python -m loading.validate --ttl data/rdf/phase4_pilot25_graph.ttl
+```
+
+Run pilot graph algorithms after Neo4j is loaded:
+
+```bash
+uv run python -m algorithms.run_all
+```
+
+Algorithm outputs:
+
+- `data/algorithms/pagerank.csv`: focal-company PageRank and graph degree
+- `data/algorithms/communities.csv`: Louvain community assignment with community size
+- `data/algorithms/similarity.csv`: explainable company similarity from shared extracted graph features
+- `algorithms/community_report.md`: tracked summary report for the latest pilot run
 
 ## Raw Filing Convention
 

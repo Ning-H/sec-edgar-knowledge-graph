@@ -38,4 +38,4 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["ingestion*", "extraction*", "loading*"]
+include = ["ingestion*", "extraction*", "loading*", "algorithms*"]

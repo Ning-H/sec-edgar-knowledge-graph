@@ -17,6 +17,8 @@ data/extracted/*
 !data/extracted/*.example.csv
 data/rdf/*
 !data/rdf/.gitkeep
+data/algorithms/*
+!data/algorithms/.gitkeep
 
 neo4j/data/
 neo4j/logs/
