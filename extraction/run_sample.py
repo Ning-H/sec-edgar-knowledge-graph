@@ -19,6 +19,33 @@ from extraction.relation_extraction import (
 
 
 DEFAULT_TICKERS = ["AAPL", "JPM", "WMT", "CAT", "PFE"]
+PILOT_25_TICKERS = [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "AMZN",
+    "JPM",
+    "BAC",
+    "GS",
+    "WMT",
+    "COST",
+    "HD",
+    "PFE",
+    "JNJ",
+    "UNH",
+    "CAT",
+    "BA",
+    "GE",
+    "XOM",
+    "CVX",
+    "NEE",
+    "DUK",
+    "PLD",
+    "AMT",
+    "LIN",
+    "APD",
+    "CMCSA",
+]
 
 app = typer.Typer(help="Run Phase 3 sample extraction on 5 diverse filings.")
 console = Console()
@@ -37,6 +64,10 @@ def main(
     output: Path = typer.Option(Path("data/extracted/phase3_sample_extraction.jsonl")),
     stats_output: Path = typer.Option(Path("data/extracted/phase3_sample_stats.json")),
     companies_csv: Path = typer.Option(Path("data/processed/sp500_companies.csv")),
+    tickers: str = typer.Option(
+        ",".join(DEFAULT_TICKERS),
+        help="Comma-separated tickers to extract, or 'pilot25'.",
+    ),
 ) -> None:
     nlp = load_nlp()
     resolver = CompanyResolver(companies_csv)
@@ -51,7 +82,8 @@ def main(
     records: list[dict] = []
     stats: list[dict] = []
 
-    for ticker in DEFAULT_TICKERS:
+    selected_tickers = _parse_tickers(tickers)
+    for ticker in selected_tickers:
         filing_path = find_latest_filing(raw_dir, ticker)
         filing = load_filing_sections(filing_path)
         focal_company = company_names.get(ticker, ticker)
@@ -105,8 +137,14 @@ def main(
         for record in records:
             handle.write(json.dumps(record) + "\n")
     stats_output.write_text(json.dumps({"filings": stats}, indent=2), encoding="utf-8")
-    console.print(f"Wrote sample JSONL to {output}")
-    console.print(f"Wrote sample stats to {stats_output}")
+    console.print(f"Wrote extraction JSONL to {output}")
+    console.print(f"Wrote extraction stats to {stats_output}")
+
+
+def _parse_tickers(tickers: str) -> list[str]:
+    if tickers.strip().casefold() == "pilot25":
+        return PILOT_25_TICKERS
+    return [ticker.strip().upper() for ticker in tickers.split(",") if ticker.strip()]
 
 
 def _count_relationship_types(relationships) -> dict[str, int]:

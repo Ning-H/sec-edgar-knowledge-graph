@@ -427,7 +427,7 @@ def _split_business_items(raw: str) -> list[str]:
         if re.search(
             r"\b(form 10-k|customers?|pickup|following|stores|ecommerce|convenient|"
             r"strategic guidance|pfizer inc|similar|new products?|competitive environments?|"
-            r"solely through the internet|non-financial companies)\b",
+            r"solely through the internet|non-financial companies|we develop|produce media content)\b",
             piece,
             flags=re.I,
         ):
