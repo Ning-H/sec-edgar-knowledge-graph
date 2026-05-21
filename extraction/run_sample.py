@@ -13,6 +13,7 @@ from extraction.ner_pipeline import extract_entities_from_text, load_nlp, summar
 from extraction.relation_extraction import (
     ClaudeRelationExtractor,
     RELATION_EXTRACTION_PROMPT,
+    heuristic_extract_business_profile,
     heuristic_extract_relations,
 )
 
@@ -65,6 +66,10 @@ def main(
                 )
         else:
             relationships = heuristic_extract_relations(filing.full_text, focal_company, entities)
+        relationships = _merge_relationships(
+            relationships,
+            heuristic_extract_business_profile(filing.sections.get("business", ""), focal_company),
+        )
         resolutions = resolve_org_mentions(entities, resolver, limit=30)
         record = {
             "ticker": ticker,
@@ -109,6 +114,23 @@ def _count_relationship_types(relationships) -> dict[str, int]:
     for relationship in relationships:
         counts[relationship.predicate] = counts.get(relationship.predicate, 0) + 1
     return counts
+
+
+def _merge_relationships(*groups):
+    merged = []
+    seen = set()
+    for group in groups:
+        for relationship in group:
+            key = (
+                relationship.subject.casefold(),
+                relationship.predicate,
+                relationship.object.casefold(),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(relationship)
+    return merged
 
 
 if __name__ == "__main__":

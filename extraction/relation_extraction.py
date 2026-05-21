@@ -237,6 +237,81 @@ def heuristic_extract_relations(
     return _dedupe_relationships(relationships)[:40]
 
 
+def heuristic_extract_business_profile(
+    text: str,
+    focal_company: str,
+    max_sentences: int = 80,
+) -> list[ExtractedRelationship]:
+    """Extract product/market relationships from Item 1 Business language.
+
+    This is deliberately conservative and records a separate extraction method so these
+    relationships can be reviewed or filtered independently from Claude output.
+    """
+
+    relationships: list[ExtractedRelationship] = []
+    product_patterns = [
+        re.compile(
+            r"(?:designs,\s+manufactures\s+and\s+markets|manufactures?\s+and\s+sells?|"
+            r"markets,\s+sells?\s+and\s+distributes?|market,\s+sell\s+and\s+distribute|"
+            r"manufacture,\s+marketing,\s+sale\s+and\s+distribution\s+of|"
+            r"revenues\s+come\s+from\s+the\s+manufacture\s+and\s+sale\s+of)"
+            r"\s+(?P<items>[^.;:]{8,260})",
+            re.IGNORECASE,
+        ),
+        re.compile(
+            r"(?:providing|provides|offers?)\s+(?P<items>[^.;:]{8,120}?"
+            r"(?:merchandise\s+and\s+services|products\s+and\s+services|software|platforms|solutions))",
+            re.IGNORECASE,
+        ),
+    ]
+    market_patterns = [
+        re.compile(r"(?:work\s+across)\s+(?P<items>[^.;:]{8,160})", re.IGNORECASE)
+    ]
+
+    product_profile_found = False
+    for sentence in _sentences(text)[:max_sentences]:
+        if not product_profile_found:
+            for pattern in product_patterns:
+                match = pattern.search(sentence)
+                if not match:
+                    continue
+                items = _split_business_items(match.group("items"))
+                for item in items:
+                    relationships.append(
+                        _relationship(
+                            focal_company,
+                            "supplies",
+                            item,
+                            "ProductLine",
+                            0.68,
+                            sentence,
+                            "Business section directly describes products or services sold by the focal company.",
+                            "heuristic:business_product_profile",
+                        )
+                    )
+                if items:
+                    product_profile_found = True
+                    break
+        for pattern in market_patterns:
+            match = pattern.search(sentence)
+            if not match:
+                continue
+            for item in _split_business_items(match.group("items")):
+                relationships.append(
+                    _relationship(
+                        focal_company,
+                        "exposed_to",
+                        item,
+                        "GeographicRegion",
+                        0.62,
+                        sentence,
+                        "Business section directly describes operating markets or geographic scope.",
+                        "heuristic:business_market_profile",
+                    )
+                )
+    return _dedupe_relationships(relationships)[:20]
+
+
 def _loads_json_object(content: str) -> dict:
     try:
         return json.loads(content)
@@ -319,6 +394,48 @@ def _relationship(
         rationale=rationale,
         extraction_method=method,
     )
+
+
+def _split_business_items(raw: str) -> list[str]:
+    if re.search(r"developed\s+and\s+emerging\s+markets", raw, flags=re.I):
+        return ["Developed and emerging markets"]
+    cleaned = re.sub(r"\([^)]*\)", "", raw)
+    cleaned = re.sub(r"\b[A-Z][A-Za-z .,&-]+Form\s+10-K\s+\d+\b", "", cleaned)
+    cleaned = re.sub(r"\b(?:worldwide|globally|principally|primarily|including|includes)\b", "", cleaned, flags=re.I)
+    cleaned = cleaned.replace(" and ", ", ")
+    cleaned = cleaned.replace(" or ", ", ")
+    pieces = [piece.strip(" ,.-") for piece in cleaned.split(",")]
+    stop_prefixes = (
+        "sells a variety of ",
+        "a variety of ",
+        "broad assortment of ",
+        "the ",
+        "our ",
+        "a ",
+        "an ",
+        "sells ",
+        "sale of ",
+    )
+    items: list[str] = []
+    for piece in pieces:
+        piece = re.sub(r"\s+", " ", piece).strip()
+        for prefix in stop_prefixes:
+            if piece.casefold().startswith(prefix):
+                piece = piece[len(prefix) :].strip()
+        if not (3 <= len(piece) <= 80):
+            continue
+        if re.search(
+            r"\b(form 10-k|customers?|pickup|following|stores|ecommerce|convenient|"
+            r"strategic guidance|pfizer inc|similar|new products?|competitive environments?|"
+            r"solely through the internet|non-financial companies)\b",
+            piece,
+            flags=re.I,
+        ):
+            continue
+        if piece.casefold() in {"products", "services", "business", "customers", "markets"}:
+            continue
+        items.append(piece[:1].upper() + piece[1:])
+    return list(dict.fromkeys(items))
 
 
 def _alternation(values: list[str]) -> str:
