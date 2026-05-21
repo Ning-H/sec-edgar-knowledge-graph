@@ -5,13 +5,16 @@ description = "Financial knowledge graph over SEC EDGAR filings with Neo4j, OWL/
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "anthropic>=0.74.0",
     "beautifulsoup4>=4.12.3",
     "lxml>=5.2.2",
     "pandas>=2.2.2",
     "pydantic>=2.8.2",
     "python-dotenv>=1.0.1",
+    "rapidfuzz>=3.10.0",
     "requests>=2.32.3",
     "rich>=13.7.1",
+    "spacy>=3.8.0",
     "typer>=0.12.3",
 ]
 
@@ -33,4 +36,4 @@ requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["ingestion*"]
+include = ["ingestion*", "extraction*"]

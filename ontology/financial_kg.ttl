@@ -1,0 +1,236 @@
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix fkg: <https://github.com/Ning-H/sec-edgar-knowledge-graph/ontology#> .
+@prefix fibo-be-corp-corp: <https://spec.edmcouncil.org/fibo/ontology/BE/Corporations/Corporations/> .
+@prefix fibo-be-le-lp: <https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/> .
+@prefix fibo-fbc-fct-fse: <https://spec.edmcouncil.org/fibo/ontology/FBC/FunctionalEntities/FinancialServicesEntities/> .
+@prefix fibo-fbc-fi-fi: <https://spec.edmcouncil.org/fibo/ontology/FBC/FinancialInstruments/FinancialInstruments/> .
+@prefix fibo-fnd-arr-id: <https://spec.edmcouncil.org/fibo/ontology/FND/Arrangements/IdentifiersAndIndices/> .
+@prefix fibo-fnd-org-fm: <https://spec.edmcouncil.org/fibo/ontology/FND/Organizations/FormalOrganizations/> .
+@prefix fibo-fnd-pas-pas: <https://spec.edmcouncil.org/fibo/ontology/FND/ProductsAndServices/ProductsAndServices/> .
+@prefix fibo-fnd-plc-loc: <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Locations/> .
+@prefix fibo-fnd-rel-rel: <https://spec.edmcouncil.org/fibo/ontology/FND/Relations/Relations/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://github.com/Ning-H/sec-edgar-knowledge-graph/ontology>
+    a owl:Ontology ;
+    dcterms:title "Financial Knowledge Graph Ontology" ;
+    dcterms:creator "Ning Han" ;
+    dcterms:description "Project ontology for representing companies, SEC filings, people, industries, regions, product lines, and extracted business relationships from SEC EDGAR filings." ;
+    owl:versionInfo "0.1.0" ;
+    rdfs:seeAlso <https://spec.edmcouncil.org/fibo/>,
+        <https://github.com/edmcouncil/fibo> .
+
+#################################################################
+# Classes
+#################################################################
+
+fkg:Company
+    a owl:Class ;
+    rdfs:label "Company" ;
+    rdfs:comment "A public company represented in SEC EDGAR and identified by CIK and ticker when available." ;
+    rdfs:subClassOf fibo-be-corp-corp:Corporation ;
+    skos:closeMatch fibo-be-le-lp:LegalEntity .
+
+fkg:Person
+    a owl:Class ;
+    rdfs:label "Person" ;
+    rdfs:comment "A natural person mentioned in a filing, such as an officer, director, executive, or named counterparty." .
+
+fkg:Filing
+    a owl:Class ;
+    rdfs:label "Filing" ;
+    rdfs:comment "An SEC filing document such as a 10-K, 10-Q, 8-K, or DEF 14A." .
+
+fkg:Industry
+    a owl:Class ;
+    rdfs:label "Industry" ;
+    rdfs:comment "An industry, sector, or business classification used to group companies." .
+
+fkg:GeographicRegion
+    a owl:Class ;
+    rdfs:label "Geographic Region" ;
+    rdfs:comment "A country, region, state, city, or market area associated with company exposure." ;
+    skos:closeMatch fibo-fnd-plc-loc:Location .
+
+fkg:ProductLine
+    a owl:Class ;
+    rdfs:label "Product Line" ;
+    rdfs:comment "A product, service, segment, platform, or named business line discussed in a filing." ;
+    skos:closeMatch fibo-fnd-pas-pas:Product .
+
+fkg:Event
+    a owl:Class ;
+    rdfs:label "Event" ;
+    rdfs:comment "A material event extracted from a filing, such as an acquisition, divestiture, litigation event, restructuring, or supply disruption." .
+
+#################################################################
+# Object properties
+#################################################################
+
+fkg:employs
+    a owl:ObjectProperty ;
+    rdfs:label "employs" ;
+    rdfs:comment "Links a company to a person it employs or appoints as an officer/director." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range fkg:Person .
+
+fkg:competesWith
+    a owl:ObjectProperty, owl:SymmetricProperty ;
+    rdfs:label "competes with" ;
+    rdfs:comment "Links companies that compete in a disclosed product, industry, or market context." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range fkg:Company .
+
+fkg:supplies
+    a owl:ObjectProperty ;
+    rdfs:label "supplies" ;
+    rdfs:comment "Links a supplier company to a customer company, product line, or industry context." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range owl:Thing .
+
+fkg:customerOf
+    a owl:ObjectProperty ;
+    rdfs:label "customer of" ;
+    rdfs:comment "Links a customer company to a supplier company when customer language is extracted." ;
+    owl:inverseOf fkg:supplies ;
+    rdfs:domain fkg:Company ;
+    rdfs:range fkg:Company .
+
+fkg:subsidiaryOf
+    a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:label "subsidiary of" ;
+    rdfs:comment "Links a company to its parent company." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range fkg:Company ;
+    skos:closeMatch fibo-fnd-rel-rel:isConferredBy .
+
+fkg:filed
+    a owl:ObjectProperty ;
+    rdfs:label "filed" ;
+    rdfs:comment "Links a company to an SEC filing it submitted." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range fkg:Filing .
+
+fkg:exposedTo
+    a owl:ObjectProperty ;
+    rdfs:label "exposed to" ;
+    rdfs:comment "Links a company to a geographic region, product line, industry, or event that represents business exposure." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range owl:Thing .
+
+fkg:inIndustry
+    a owl:ObjectProperty ;
+    rdfs:label "in industry" ;
+    rdfs:comment "Links a company to its industry or sector classification." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range fkg:Industry .
+
+fkg:locatedIn
+    a owl:ObjectProperty ;
+    rdfs:label "located in" ;
+    rdfs:comment "Links a company, person, filing, event, or product line to a geographic region." ;
+    rdfs:range fkg:GeographicRegion ;
+    skos:closeMatch fibo-fnd-plc-loc:hasLocation .
+
+fkg:mentions
+    a owl:ObjectProperty ;
+    rdfs:label "mentions" ;
+    rdfs:comment "Links a filing to an extracted entity or relationship target mentioned in its text." ;
+    rdfs:domain fkg:Filing ;
+    rdfs:range owl:Thing .
+
+#################################################################
+# Data properties
+#################################################################
+
+fkg:cik
+    a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "CIK" ;
+    rdfs:comment "SEC Central Index Key as a zero-padded or numeric identifier." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range xsd:string ;
+    skos:closeMatch fibo-fnd-arr-id:Identifier .
+
+fkg:ticker
+    a owl:DatatypeProperty ;
+    rdfs:label "ticker" ;
+    rdfs:comment "Public trading symbol used for the company security." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range xsd:string .
+
+fkg:name
+    a owl:DatatypeProperty ;
+    rdfs:label "name" ;
+    rdfs:comment "Human-readable label for a company, person, industry, region, product line, event, or filing." ;
+    rdfs:range xsd:string .
+
+fkg:accessionNumber
+    a owl:DatatypeProperty, owl:FunctionalProperty ;
+    rdfs:label "accession number" ;
+    rdfs:comment "SEC accession number identifying a filing submission." ;
+    rdfs:domain fkg:Filing ;
+    rdfs:range xsd:string .
+
+fkg:formType
+    a owl:DatatypeProperty ;
+    rdfs:label "form type" ;
+    rdfs:comment "SEC form type, for example 10-K, 10-Q, 8-K, or DEF 14A." ;
+    rdfs:domain fkg:Filing ;
+    rdfs:range xsd:string .
+
+fkg:filingDate
+    a owl:DatatypeProperty ;
+    rdfs:label "filing date" ;
+    rdfs:comment "Date the filing was submitted to SEC EDGAR." ;
+    rdfs:domain fkg:Filing ;
+    rdfs:range xsd:date .
+
+fkg:sicCode
+    a owl:DatatypeProperty ;
+    rdfs:label "SIC code" ;
+    rdfs:comment "SEC Standard Industrial Classification code associated with a registrant." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range xsd:string .
+
+fkg:reportedRevenue
+    a owl:DatatypeProperty ;
+    rdfs:label "reported revenue" ;
+    rdfs:comment "Revenue value reported or normalized from structured filing data." ;
+    rdfs:domain fkg:Company ;
+    rdfs:range xsd:decimal .
+
+fkg:sourceText
+    a owl:DatatypeProperty ;
+    rdfs:label "source text" ;
+    rdfs:comment "Short source span that supports an extracted entity or relationship." ;
+    rdfs:range xsd:string .
+
+fkg:confidence
+    a owl:DatatypeProperty ;
+    rdfs:label "confidence" ;
+    rdfs:comment "Confidence score assigned to an extracted entity or relationship, from 0.0 to 1.0." ;
+    rdfs:range xsd:decimal .
+
+fkg:extractionMethod
+    a owl:DatatypeProperty ;
+    rdfs:label "extraction method" ;
+    rdfs:comment "Extraction method such as spacy_ner, llm_relation_extraction, sec_structured_data, or manual_seed." ;
+    rdfs:range xsd:string .
+
+#################################################################
+# Named individuals for controlled relationship contexts
+#################################################################
+
+fkg:CompetitionRelationship
+    a fkg:Event ;
+    rdfs:label "Competition relationship" ;
+    rdfs:comment "Controlled event-like context for extracted competitive relationships." .
+
+fkg:SupplyRelationship
+    a fkg:Event ;
+    rdfs:label "Supply relationship" ;
+    rdfs:comment "Controlled event-like context for extracted supplier or customer relationships." .

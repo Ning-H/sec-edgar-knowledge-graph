@@ -16,6 +16,56 @@ flowchart TD
     F --> H
 ```
 
+## Ontology Schema
+
+The Phase 2 ontology lives in [`ontology/financial_kg.ttl`](ontology/financial_kg.ttl), with design notes in [`ontology/README.md`](ontology/README.md). It keeps a compact project namespace while aligning the core financial concepts to FIBO where the mapping is clear.
+
+```mermaid
+classDiagram
+    class Company {
+        cik string
+        ticker string
+        sicCode string
+        reportedRevenue decimal
+    }
+    class Person {
+        name string
+    }
+    class Filing {
+        accessionNumber string
+        formType string
+        filingDate date
+    }
+    class Industry {
+        name string
+    }
+    class GeographicRegion {
+        name string
+    }
+    class ProductLine {
+        name string
+    }
+    class Event {
+        name string
+        sourceText string
+        confidence decimal
+        extractionMethod string
+    }
+
+    Company --> Person : employs
+    Company --> Company : competesWith
+    Company --> Company : supplies / customerOf
+    Company --> Company : subsidiaryOf
+    Company --> Filing : filed
+    Company --> Industry : inIndustry
+    Company --> GeographicRegion : exposedTo / locatedIn
+    Company --> ProductLine : exposedTo
+    Company --> Event : exposedTo
+    Filing --> Company : mentions
+    Filing --> Person : mentions
+    Filing --> Event : mentions
+```
+
 ## Phase 1 Scope
 
 This phase sets up the foundation and SEC ingestion only.
