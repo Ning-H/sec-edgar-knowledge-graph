@@ -187,6 +187,18 @@ Useful API routes:
 - `GET /algorithms/communities`: generated Louvain community output
 - `GET /algorithms/similarity`: generated explainable similarity output
 
+Start the Streamlit dashboard in a second terminal:
+
+```bash
+uv run streamlit run dashboard/app.py
+```
+
+The dashboard expects the API at `http://127.0.0.1:8000` by default. Override with:
+
+```bash
+KG_API_BASE_URL=http://127.0.0.1:8000 uv run streamlit run dashboard/app.py
+```
+
 ## Raw Filing Convention
 
 Downloaded filings are stored under:
