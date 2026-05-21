@@ -14,6 +14,8 @@ data/processed/*
 !data/processed/.gitkeep
 data/extracted/*
 !data/extracted/.gitkeep
+data/rdf/*
+!data/rdf/.gitkeep
 
 neo4j/data/
 neo4j/logs/
