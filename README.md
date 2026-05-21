@@ -1,18 +1,22 @@
 # Financial Knowledge Graph from SEC EDGAR
 
-Financial knowledge graph over US public-company SEC filings. The project is being built in gated phases for a Point72-style knowledge graph portfolio: ingestion first, then ontology, extraction, dual graph storage, algorithms, API, and Streamlit demo.
+Financial knowledge graph over US public-company SEC filings. The project is built in gated phases for a Point72-style knowledge graph portfolio: ingestion, ontology, extraction, dual graph storage, algorithms, API, and Streamlit demo.
 
 ## Current Checkpoint
 
-The repo currently has a reproducible 25-company pilot graph:
+The repo is currently at **Phase 7: Streamlit dashboard over the pilot knowledge graph**.
+
+Implemented:
 
 - SEC filing ingestion and local manifest generation
 - Financial ontology in Turtle/RDF with Neo4j loader mappings
 - Filing-to-entity extraction with review-status quality gates
 - Neo4j property graph and RDF/Turtle export validation
 - Pilot graph algorithms with Neo4j Graph Data Science: PageRank, Louvain communities, and interpretable company similarity
+- Read-only FastAPI layer for graph and algorithm queries
+- Streamlit dashboard for reviewer-friendly exploration
 
-The latest generated pilot artifacts are intentionally local-only under `data/`; code and report templates are tracked so the run can be reproduced.
+The latest generated pilot artifacts are intentionally local-only under `data/`; code, ontology, API, dashboard, tests, and report templates are tracked so the run can be reproduced.
 
 ## Architecture
 
@@ -78,17 +82,17 @@ classDiagram
     Filing --> Event : mentions
 ```
 
-## Phase 1 Scope
+## Phase Roadmap
 
-This phase sets up the foundation and SEC ingestion only.
+- Phase 1: SEC ingestion, S&P 500 company index, latest 10-K download workflow
+- Phase 2: Financial ontology in RDF/Turtle with FIBO-aligned concepts
+- Phase 3: Entity and relationship extraction from filing text
+- Phase 4: Neo4j property graph, RDF export, and cross-store validation
+- Phase 5: Pilot graph algorithms with Neo4j GDS and explainable similarity
+- Phase 6: Read-only FastAPI query layer
+- Phase 7: Streamlit dashboard over the API
 
-- Docker Compose with Neo4j 5.x and Graph Data Science plugin enabled
-- Rate-limited SEC EDGAR client with required User-Agent
-- S&P 500 constituent loader
-- Latest 10-K filing downloader
-- Local folder convention for raw filings
-
-Later phases will add ontology design, extraction, RDF/SPARQL, graph algorithms, API, and dashboard.
+Later optional phases can expand extraction quality, alias resolution, Node2Vec/link prediction, and hosted deployment.
 
 ## Setup
 
@@ -151,10 +155,11 @@ uv run python -m ingestion.filing_downloader --limit 5
 Run the 25-company pilot extraction and graph load:
 
 ```bash
-uv run python -m extraction.pipeline --tickers AAPL MSFT NVDA AMZN GOOGL META JPM BAC GS WMT COST HD XOM CVX NEE BA GE CAT UNH PFE JNJ PLD AMT APD CMCSA --output data/extracted/phase4_pilot25_extraction.jsonl --stats-output data/extracted/phase4_pilot25_stats.json --review-output data/extracted/phase4_pilot25_relationship_review.csv
-uv run python -m loading.neo4j_loader --input data/extracted/phase4_pilot25_extraction.jsonl --clear
-uv run python -m loading.rdf_exporter --input data/extracted/phase4_pilot25_extraction.jsonl --output data/rdf/phase4_pilot25_graph.ttl
-uv run python -m loading.validate --ttl data/rdf/phase4_pilot25_graph.ttl
+uv run python -m extraction.run_sample --tickers pilot25 --output data/extracted/phase4_pilot25_extraction.jsonl --stats-output data/extracted/phase4_pilot25_stats.json
+uv run python -m loading.review_export --sample-path data/extracted/phase4_pilot25_extraction.jsonl --output data/extracted/phase4_pilot25_relationship_review.csv
+uv run python -m loading.neo4j_loader --sample-path data/extracted/phase4_pilot25_extraction.jsonl --reset
+uv run python -m loading.rdf_loader --sample-path data/extracted/phase4_pilot25_extraction.jsonl --output data/rdf/phase4_pilot25_graph.ttl
+uv run python -m loading.validate --rdf-path data/rdf/phase4_pilot25_graph.ttl
 ```
 
 Run pilot graph algorithms after Neo4j is loaded:
@@ -199,6 +204,33 @@ The dashboard expects the API at `http://127.0.0.1:8000` by default. Override wi
 KG_API_BASE_URL=http://127.0.0.1:8000 uv run streamlit run dashboard/app.py
 ```
 
+## Validation
+
+Run local quality checks:
+
+```bash
+uv run --extra dev ruff check .
+uv run --extra dev python -m pytest -q
+```
+
+The current test suite covers SEC client behavior, extraction helpers, graph loading/RDF utilities, FastAPI routes with a fake Neo4j driver, and dashboard API-client helpers.
+
+For a live smoke test after Neo4j, API, and Streamlit are running:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl "http://127.0.0.1:8000/companies?limit=3"
+curl "http://127.0.0.1:8000/algorithms/pagerank?limit=3"
+```
+
+## Known Limitations
+
+- The default reproducible graph is a 25-company pilot, not a full S&P 500 graph.
+- Relationship extraction is review-gated; heuristic and LLM-assisted edges should not be treated as audited truth.
+- Some extracted company aliases and subsidiaries still need stronger entity-resolution cleanup.
+- PageRank, Louvain, and explainable similarity are implemented; Node2Vec and link prediction are future optional work.
+- Generated data under `data/` is local-only and intentionally not committed.
+
 ## Raw Filing Convention
 
 Downloaded filings are stored under:
@@ -212,13 +244,3 @@ Example:
 ```text
 data/raw/10-K/AAPL_0000320193_000032019325000079.html
 ```
-
-## Phase 1 Checkpoint
-
-Before moving to Phase 2, verify:
-
-- Neo4j boots and `gds.version()` returns a version string
-- SEC requests include a real User-Agent and respect the configured rate limit
-- S&P 500 companies are loaded into `data/processed/sp500_companies.csv`
-- Latest 10-K filings are downloaded into `data/raw/10-K/`
-- `data/processed/filing_manifest.csv` records downloaded filing metadata
