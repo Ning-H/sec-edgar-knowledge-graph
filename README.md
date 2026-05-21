@@ -170,6 +170,23 @@ Algorithm outputs:
 - `data/algorithms/similarity.csv`: explainable company similarity from shared extracted graph features
 - `algorithms/community_report.md`: tracked summary report for the latest pilot run
 
+Start the read-only API:
+
+```bash
+uv run uvicorn api.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Useful API routes:
+
+- `GET /health`: Neo4j connectivity check
+- `GET /summary`: node, relationship, and review-status counts
+- `GET /companies?limit=25`: focal SEC filers with graph degree
+- `GET /companies/{ticker}`: company metadata and filing references
+- `GET /companies/{ticker}/neighbors`: extracted graph relationships around one company
+- `GET /algorithms/pagerank`: generated PageRank output
+- `GET /algorithms/communities`: generated Louvain community output
+- `GET /algorithms/similarity`: generated explainable similarity output
+
 ## Raw Filing Convention
 
 Downloaded filings are stored under:
